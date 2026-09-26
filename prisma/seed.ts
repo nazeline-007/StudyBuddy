@@ -587,6 +587,10 @@ async function main() {
   // ============================================================
 
   // Strong student performance: Arrays=90, LinkedLists=85, Stacks=80, Queues=82, Trees=75, BinaryTrees=72, Traversal=70
+  // Decision: simulate 10 practice sessions so the formula converges to STRONG (>=70%) status.
+  // With the formula newM = prev*0.7 + score*0.3, starting from 0 and applying 10 times at score=90
+  // converges to ~0.3*90 * sum(0.7^k for k=0..9) ≈ 27 * 2.868 = 77.4% → STRONG.
+  // This realistically represents a well-practiced student.
   const strongPerf = [
     { conceptId: 'c-arrays',      score: 90 },
     { conceptId: 'c-linkedlists', score: 85 },
@@ -598,11 +602,14 @@ async function main() {
   ]
 
   for (const p of strongPerf) {
-    // Simulate 3 attempts averaging high
-    const m1 = applyMasteryFormula(0, p.score - 5)
-    const m2 = applyMasteryFormula(m1, p.score)
-    const m3 = applyMasteryFormula(m2, p.score + 2)
-    const finalMastery = Math.min(100, m3)
+    // Simulate 10 attempts to reach stable high mastery (converges to score*0.3/0.3 = score at infinity)
+    let mastery = 0
+    for (let i = 0; i < 10; i++) {
+      // Vary score slightly for realism: start low, build up
+      const sessionScore = i < 3 ? p.score - 10 : i < 7 ? p.score : p.score + 2
+      mastery = applyMasteryFormula(mastery, Math.min(100, sessionScore))
+    }
+    const finalMastery = Math.min(100, mastery)
 
     await prisma.studentConceptPerformance.upsert({
       where: { studentId_conceptId: { studentId: strongStudent.id, conceptId: p.conceptId } },
@@ -610,7 +617,7 @@ async function main() {
         masteryPercent: finalMastery,
         status: computeStatus(finalMastery),
         lastScorePercent: p.score,
-        attemptsCount: 3,
+        attemptsCount: 10,
       },
       create: {
         studentId: strongStudent.id,
@@ -618,7 +625,7 @@ async function main() {
         masteryPercent: finalMastery,
         status: computeStatus(finalMastery),
         lastScorePercent: p.score,
-        attemptsCount: 3,
+        attemptsCount: 10,
       },
     })
   }

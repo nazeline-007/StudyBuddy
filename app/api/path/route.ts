@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateLearningPath } from '@/lib/pathGenerator'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/path?studentId=xxx
 // Returns current learning path (or generates one if missing)
 export async function GET(request: Request) {

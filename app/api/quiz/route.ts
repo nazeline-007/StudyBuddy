@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { startingDifficultyFromMastery } from '@/lib/adaptiveQuiz'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/quiz?studentId=xxx&conceptId=xxx
 // Returns: starting difficulty, first question
 export async function GET(request: Request) {

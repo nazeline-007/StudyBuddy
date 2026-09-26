@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/analysis?studentId=xxx
 // Returns: student, all concept performances, strengths/weaknesses/gaps
 export async function GET(request: Request) {
