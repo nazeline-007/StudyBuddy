@@ -49,6 +49,7 @@ function QuizContent() {
   const searchParams = useSearchParams()
   const studentId = searchParams.get('studentId')
   const conceptId = searchParams.get('conceptId')
+  const subjectId = searchParams.get('subjectId')
 
   const [session, setSession] = useState<QuizSession | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(null)
@@ -195,7 +196,7 @@ function QuizContent() {
       <div className="page-content flex items-center justify-center">
         <div className="card max-w-md text-center">
           <p className="text-danger-400 mb-4">{error}</p>
-          <button onClick={() => router.push(`/path?studentId=${studentId}`)} className="btn-secondary">← Back to Path</button>
+          <button onClick={() => router.push(`/path?studentId=${studentId}${subjectId ? `&subjectId=${subjectId}` : ''}`)} className="btn-secondary">← Back to Path</button>
         </div>
       </div>
     )
@@ -204,6 +205,7 @@ function QuizContent() {
   // Completion screen
   if (completed && completionData) {
     const { quiz, mastery } = completionData
+    const resolvedSubjectId = subjectId || completionData.subjectId
     const masteryChanged = mastery.newMastery > mastery.previousMastery ? 'improved' :
                            mastery.newMastery < mastery.previousMastery ? 'decreased' : 'unchanged'
     return (
@@ -276,12 +278,12 @@ function QuizContent() {
             </div>
 
             <div className="flex gap-3 justify-center">
-              <button onClick={() => router.push(`/path?studentId=${studentId}`)} className="btn-secondary">
+              <button onClick={() => router.push(`/path?studentId=${studentId}${resolvedSubjectId ? `&subjectId=${resolvedSubjectId}` : ''}`)} className="btn-secondary">
                 ← Back to Path
               </button>
               <button
                 id="view-recommendations-btn"
-                onClick={() => router.push(`/recommendations?studentId=${studentId}`)}
+                onClick={() => router.push(`/recommendations?studentId=${studentId}${resolvedSubjectId ? `&subjectId=${resolvedSubjectId}` : ''}`)}
                 className="btn-primary"
               >
                 View Updated Recommendations →

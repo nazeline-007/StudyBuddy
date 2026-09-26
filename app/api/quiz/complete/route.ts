@@ -51,8 +51,13 @@ export async function POST(request: Request) {
     // 5. Update mastery using the formula
     const updated = await updateConceptPerformance(studentId, conceptId, scorePercent)
 
-    // 6. Regenerate learning path
-    const path = await generateLearningPath(studentId)
+    // 6. Find subjectId and regenerate learning path scoped to subject
+    const concept = await prisma.concept.findUnique({
+      where: { id: conceptId },
+      include: { topic: true },
+    })
+    const subjectId = concept?.topic?.subjectId
+    const path = await generateLearningPath(studentId, subjectId)
 
     // 7. Get difficulty trajectory for display (proves adaptivity)
     const difficultyTrajectory = quizAttempts.map(a => ({
@@ -63,6 +68,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
+      subjectId,
       quiz: {
         totalQuestions: quizAttempts.length,
         correctCount,

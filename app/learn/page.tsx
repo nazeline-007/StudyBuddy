@@ -270,7 +270,7 @@ function LearnContent() {
         <div className="mt-6 text-center">
           <button
             id="quiz-from-learn-btn"
-            onClick={() => router.push(`/quiz?studentId=${studentId}&conceptId=${conceptId}`)}
+            onClick={() => router.push(`/quiz?studentId=${studentId}&conceptId=${conceptId}${subjectId ? `&subjectId=${subjectId}` : ''}`)}
             className="btn-primary"
           >
             Ready to Practice? Take the Quiz →
