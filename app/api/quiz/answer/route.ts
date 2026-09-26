@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       where: {
         conceptId,
         difficulty: nextState.currentDifficulty,
-        id: { notIn: [...usedIds] },
+        id: { notIn: Array.from(usedIds) },
       },
     })
 

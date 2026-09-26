@@ -45,9 +45,9 @@ export function computeConceptScores(
   }
 
   const scores = new Map<string, number>()
-  for (const [conceptId, { correct, total }] of counts) {
+  Array.from(counts.entries()).forEach(([conceptId, { correct, total }]) => {
     scores.set(conceptId, total > 0 ? (correct / total) * 100 : 0)
-  }
+  })
   return scores
 }
 

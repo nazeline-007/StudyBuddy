@@ -65,7 +65,8 @@ export async function POST(request: Request) {
     // 5. Update StudentConceptPerformance using mastery formula
     const performanceUpdates: Record<string, { masteryPercent: number; previousMastery: number; status: string }> = {}
 
-    for (const [conceptId, score] of conceptScores) {
+    for (const entry of Array.from(conceptScores.entries())) {
+      const [conceptId, score] = entry
       const result = await updateConceptPerformance(studentId, conceptId, score)
       performanceUpdates[conceptId] = result
     }
