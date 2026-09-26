@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #0f1117;
+    --bg-secondary: #161b27;
+    --bg-card: #1c2333;
+    --bg-card-hover: #232b40;
+    --border: #2a3347;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8b95a8;
+    --text-muted: #5a6478;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[#0f1117] text-[#e8eaf0] font-sans antialiased;
+    background-image: 
+      radial-gradient(ellipse at 20% 20%, rgba(61, 90, 254, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-[#1c2333] border border-[#2a3347] rounded-2xl p-6 transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card hover:bg-[#232b40] hover:border-[#3a4a63] hover:shadow-lg hover:shadow-brand-500/5 cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-brand-500/30 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#2a3347] hover:bg-[#3a4a63] text-[#e8eaf0] font-semibold rounded-xl border border-[#3a4a63] transition-all duration-200 active:scale-95 disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-[#8b95a8] hover:text-[#e8eaf0] hover:bg-[#2a3347] rounded-lg transition-all duration-200;
+  }
+
+  .badge-strong {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-success-500/20 text-success-400 border border-success-500/30;
+  }
+
+  .badge-developing {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-warning-500/20 text-warning-400 border border-warning-500/30;
+  }
+
+  .badge-gap {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-danger-500/20 text-danger-400 border border-danger-500/30;
+  }
+
+  .badge-easy {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-success-500/20 text-success-400 border border-success-500/30;
+  }
+
+  .badge-medium {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-warning-500/20 text-warning-400 border border-warning-500/30;
+  }
+
+  .badge-hard {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-danger-500/20 text-danger-400 border border-danger-500/30;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 bg-[#161b27] border border-[#2a3347] rounded-xl text-[#e8eaf0] placeholder-[#5a6478] focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all duration-200;
+  }
+
+  .mastery-bar {
+    @apply h-2 rounded-full bg-[#2a3347] overflow-hidden;
+  }
+
+  .mastery-bar-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+
+  .section-title {
+    @apply text-2xl font-bold text-[#e8eaf0] mb-1;
+  }
+
+  .section-subtitle {
+    @apply text-[#8b95a8] text-sm;
+  }
+
+  .nav-step {
+    @apply flex items-center gap-2 text-sm font-medium;
+  }
+
+  .nav-step-active {
+    @apply text-brand-400;
+  }
+
+  .nav-step-done {
+    @apply text-success-400;
+  }
+
+  .nav-step-pending {
+    @apply text-[#5a6478];
+  }
+
+  .page-container {
+    @apply min-h-screen flex flex-col;
+  }
+
+  .page-header {
+    @apply sticky top-0 z-50 bg-[#0f1117]/90 backdrop-blur-md border-b border-[#2a3347] px-6 py-4;
+  }
+
+  .page-content {
+    @apply flex-1 max-w-4xl mx-auto w-full px-6 py-8;
+  }
+
+  .glowing-border {
+    @apply border border-brand-500/40 shadow-lg shadow-brand-500/10;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-400 to-indigo-400 bg-clip-text text-transparent;
+  }
+
+  .bg-gradient-card {
+    background: linear-gradient(135deg, rgba(61, 90, 254, 0.1), rgba(99, 102, 241, 0.05));
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #161b27;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3347;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4a63;
+}

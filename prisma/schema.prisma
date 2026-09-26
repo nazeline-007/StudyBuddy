@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum MasteryStatus {
+  STRONG     // >= 70
+  DEVELOPING // 40-69
+  GAP        // < 40
+}
+
+enum AttemptType {
+  DIAGNOSTIC
+  QUIZ
+}
+
+model Student {
+  id            String   @id @default(cuid())
+  name          String
+  createdAt     DateTime @default(now())
+
+  attempts      AssessmentAttempt[]
+  performances  StudentConceptPerformance[]
+  learningPaths LearningPath[]
+  quizAttempts  QuizAttempt[]
+}
+
+model Subject {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  topics Topic[]
+}
+
+model Topic {
+  id        String    @id @default(cuid())
+  name      String
+  subjectId String
+  subject   Subject   @relation(fields: [subjectId], references: [id])
+  concepts  Concept[]
+}
+
+model Concept {
+  id      String @id @default(cuid())
+  name    String @unique
+  topicId String
+  topic   Topic  @relation(fields: [topicId], references: [id])
+
+  questions         Question[]
+  performances      StudentConceptPerformance[]
+  learningPathItems LearningPathItem[]
+  quizAttempts      QuizAttempt[]
+
+  // prerequisite edges where THIS concept is the dependent (has prerequisites)
+  prerequisiteOf ConceptPrerequisite[] @relation("DependentConcept")
+  // prerequisite edges where THIS concept is required BY others
+  requiredFor    ConceptPrerequisite[] @relation("PrerequisiteConcept")
+}
+
+model ConceptPrerequisite {
+  id             String @id @default(cuid())
+  conceptId      String // the dependent concept (e.g. Binary Trees)
+  prerequisiteId String // the required concept (e.g. Trees)
+
+  concept      Concept @relation("DependentConcept", fields: [conceptId], references: [id])
+  prerequisite Concept @relation("PrerequisiteConcept", fields: [prerequisiteId], references: [id])
+
+  @@unique([conceptId, prerequisiteId])
+}
+
+model Question {
+  id           String          @id @default(cuid())
+  conceptId    String
+  concept      Concept         @relation(fields: [conceptId], references: [id])
+  difficulty   DifficultyLevel
+  prompt       String
+  options      Json            // array of strings
+  correctIndex Int
+  isDiagnostic Boolean         @default(false)
+  answers      Answer[]
+  quizAttempts QuizAttempt[]
+
+  @@index([conceptId, difficulty])
+}
+
+model AssessmentAttempt {
+  id          String      @id @default(cuid())
+  studentId   String
+  student     Student     @relation(fields: [studentId], references: [id])
+  type        AttemptType
+  startedAt   DateTime    @default(now())
+  completedAt DateTime?
+  overallScore Float?
+
+  answers      Answer[]
+  quizAttempts QuizAttempt[]
+}
+
+model Answer {
+  id                  String            @id @default(cuid())
+  assessmentAttemptId String
+  assessmentAttempt   AssessmentAttempt @relation(fields: [assessmentAttemptId], references: [id])
+  questionId          String
+  question            Question          @relation(fields: [questionId], references: [id])
+  selectedIndex       Int
+  isCorrect           Boolean
+  answeredAt          DateTime          @default(now())
+}
+
+model QuizAttempt {
+  id                  String            @id @default(cuid())
+  studentId           String
+  student             Student           @relation(fields: [studentId], references: [id])
+  assessmentAttemptId String
+  assessmentAttempt   AssessmentAttempt @relation(fields: [assessmentAttemptId], references: [id])
+  conceptId           String
+  concept             Concept           @relation(fields: [conceptId], references: [id])
+  questionId          String
+  question            Question          @relation(fields: [questionId], references: [id])
+  difficultyServed    DifficultyLevel
+  isCorrect           Boolean
+  sequenceIndex       Int
+  createdAt           DateTime          @default(now())
+
+  @@index([assessmentAttemptId, sequenceIndex])
+}
+
+model StudentConceptPerformance {
+  id               String        @id @default(cuid())
+  studentId        String
+  student          Student       @relation(fields: [studentId], references: [id])
+  conceptId        String
+  concept          Concept       @relation(fields: [conceptId], references: [id])
+
+  masteryPercent   Float         @default(0)
+  status           MasteryStatus @default(GAP)
+  lastScorePercent Float?
+  attemptsCount    Int           @default(0)
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([studentId, conceptId])
+  @@index([studentId, conceptId])
+}
+
+model LearningPath {
+  id          String           @id @default(cuid())
+  studentId   String
+  student     Student          @relation(fields: [studentId], references: [id])
+  generatedAt DateTime         @default(now())
+  isCurrent   Boolean          @default(true)
+
+  items LearningPathItem[]
+
+  @@index([studentId, isCurrent])
+}
+
+model LearningPathItem {
+  id             String       @id @default(cuid())
+  learningPathId String
+  learningPath   LearningPath @relation(fields: [learningPathId], references: [id])
+  conceptId      String
+  concept        Concept      @relation(fields: [conceptId], references: [id])
+  orderIndex     Int
+  reason         String
+}
