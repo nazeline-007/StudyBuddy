@@ -224,8 +224,8 @@ function buildUserPrompt(ctx: AIContext): string {
 
   const masteryDesc =
     ctx.masteryPercent >= 70 ? 'strong grasp' :
-    ctx.masteryPercent >= 40 ? 'developing understanding (needs practice)' :
-    'significant knowledge gap (needs foundations)'
+      ctx.masteryPercent >= 40 ? 'developing understanding (needs practice)' :
+        'significant knowledge gap (needs foundations)'
 
   const requestTexts: Record<string, string> = {
     explanation: `Provide a clear, structured explanation of **${ctx.concept}** (in the context of ${ctx.subject}) tailored for a student with ${ctx.masteryPercent.toFixed(0)}% mastery (${masteryDesc}). Their most recent score was ${ctx.recentScorePercent.toFixed(0)}%. ${weakAreasText} Focus on the concepts they most need at this level.`,
@@ -237,7 +237,7 @@ function buildUserPrompt(ctx: AIContext): string {
 }
 
 /**
- * Main AI Support function — uses Gemini 2.5 Flash.
+ * Main AI Support function — uses  Flash.
  * Falls back to static content on any failure.
  * Per TECHNICAL_ARCHITECTURE.md §7: LLM may ONLY generate text explanations.
  */
@@ -256,7 +256,7 @@ export async function getAISupport(ctx: AIContext): Promise<AIResponse> {
   try {
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       generationConfig: {
         // gemini-2.5-flash is a thinking model: it uses ~600-800 tokens for
         // internal reasoning before generating the visible response.
