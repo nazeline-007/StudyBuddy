@@ -32,6 +32,7 @@ function PathContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const studentId = searchParams.get('studentId')
+  const subjectId = searchParams.get('subjectId')
 
   const [data, setData] = useState<PathData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,11 +41,14 @@ function PathContent() {
   useEffect(() => {
     if (!studentId) { router.push('/'); return }
     fetchPath()
-  }, [studentId])
+  }, [studentId, subjectId])
 
   async function fetchPath() {
     try {
-      const res = await fetch(`/api/path?studentId=${studentId}`)
+      const url = subjectId
+        ? `/api/path?studentId=${studentId}&subjectId=${subjectId}`
+        : `/api/path?studentId=${studentId}`
+      const res = await fetch(url)
       const json = await res.json()
       if (json.error) {
         if (json.redirectTo) { router.push(json.redirectTo); return }
@@ -95,14 +99,17 @@ function PathContent() {
             <h1 className="font-bold text-[#e8eaf0]">{data.student.name}</h1>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => router.push(`/analysis?studentId=${studentId}`)} className="btn-ghost text-sm">
+            <button onClick={() => router.push(`/analysis?studentId=${studentId}${subjectId ? `&subjectId=${subjectId}` : ''}`)} className="btn-ghost text-sm">
               ← Analysis
             </button>
             <button
               id="regenerate-path-btn"
               onClick={async () => {
                 setLoading(true)
-                const res = await fetch(`/api/path?studentId=${studentId}&regenerate=true`)
+                const regenUrl = subjectId
+                  ? `/api/path?studentId=${studentId}&subjectId=${subjectId}&regenerate=true`
+                  : `/api/path?studentId=${studentId}&regenerate=true`
+                const res = await fetch(regenUrl)
                 const json = await res.json()
                 setData(json)
                 setLoading(false)
@@ -188,14 +195,14 @@ function PathContent() {
                   <div className="flex-shrink-0 flex flex-col gap-2">
                     <button
                       id={`learn-${item.conceptId}`}
-                      onClick={() => router.push(`/learn?studentId=${studentId}&conceptId=${item.conceptId}`)}
+                      onClick={() => router.push(`/learn?studentId=${studentId}&conceptId=${item.conceptId}${subjectId ? `&subjectId=${subjectId}` : ''}`)}
                       className="btn-primary text-sm px-4 py-2 whitespace-nowrap"
                     >
                       Learn →
                     </button>
                     <button
                       id={`quiz-${item.conceptId}`}
-                      onClick={() => router.push(`/quiz?studentId=${studentId}&conceptId=${item.conceptId}`)}
+                      onClick={() => router.push(`/quiz?studentId=${studentId}&conceptId=${item.conceptId}${subjectId ? `&subjectId=${subjectId}` : ''}`)}
                       className="btn-secondary text-sm px-4 py-2 whitespace-nowrap"
                     >
                       Quiz

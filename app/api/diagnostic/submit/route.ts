@@ -5,17 +5,21 @@ import { updateConceptPerformance } from '@/lib/pathGenerator'
 import { generateLearningPath } from '@/lib/pathGenerator'
 
 // POST /api/diagnostic/submit
-// Body: { studentId: string, answers: [{ questionId: string, selectedIndex: number }] }
+// Body: { studentId: string, subjectId: string, answers: [{ questionId: string, selectedIndex: number }] }
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { studentId, answers } = body as {
+    const { studentId, subjectId, answers } = body as {
       studentId: string
+      subjectId: string
       answers: Array<{ questionId: string; selectedIndex: number }>
     }
 
     if (!studentId || !answers?.length) {
       return NextResponse.json({ success: false, error: 'studentId and answers required' }, { status: 400 })
+    }
+    if (!subjectId) {
+      return NextResponse.json({ success: false, error: 'subjectId required' }, { status: 400 })
     }
 
     // 1. Load all question correct answers (server-side only)
@@ -71,8 +75,8 @@ export async function POST(request: Request) {
       performanceUpdates[conceptId] = result
     }
 
-    // 6. Generate learning path
-    const path = await generateLearningPath(studentId)
+    // 6. Generate learning path scoped to this subject
+    const path = await generateLearningPath(studentId, subjectId)
 
     return NextResponse.json({
       success: true,
@@ -81,6 +85,7 @@ export async function POST(request: Request) {
       conceptScores: Object.fromEntries(conceptScores),
       performanceUpdates,
       pathId: path.pathId,
+      subjectId,
       // Return scored answers so client can show results
       scoredAnswers: scoredAnswers.map(a => ({
         questionId: a.questionId,

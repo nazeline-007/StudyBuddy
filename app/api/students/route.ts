@@ -1,22 +1,40 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// GET /api/students — list all students with performance summary
-export async function GET() {
+// GET /api/students?subjectId=xxx (optional)
+// Lists students, optionally with their mastery for a specific subject
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const subjectId = searchParams.get('subjectId')
+
     const students = await prisma.student.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         performances: {
-          select: { masteryPercent: true },
+          select: {
+            masteryPercent: true,
+            concept: {
+              select: {
+                topic: {
+                  select: { subjectId: true },
+                },
+              },
+            },
+          },
         },
       },
     })
 
     const result = students.map(s => {
-      const hasPerformance = s.performances.length > 0
+      // Filter performances by subject if given
+      const relevantPerformances = subjectId
+        ? s.performances.filter(p => p.concept?.topic?.subjectId === subjectId)
+        : s.performances
+
+      const hasPerformance = relevantPerformances.length > 0
       const overallMastery = hasPerformance
-        ? s.performances.reduce((sum, p) => sum + p.masteryPercent, 0) / s.performances.length
+        ? relevantPerformances.reduce((sum, p) => sum + p.masteryPercent, 0) / relevantPerformances.length
         : null
 
       return {

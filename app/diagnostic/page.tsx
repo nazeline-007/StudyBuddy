@@ -21,8 +21,10 @@ function DiagnosticContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const studentId = searchParams.get('studentId')
+  const subjectId = searchParams.get('subjectId')
 
   const [student, setStudent] = useState<Student | null>(null)
+  const [subjectName, setSubjectName] = useState<string>('')
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -31,22 +33,23 @@ function DiagnosticContent() {
   const [currentQuestion, setCurrentQuestion] = useState(0)
 
   useEffect(() => {
-    if (!studentId) {
+    if (!studentId || !subjectId) {
       router.push('/')
       return
     }
     fetchDiagnostic()
-  }, [studentId])
+  }, [studentId, subjectId])
 
   async function fetchDiagnostic() {
     try {
-      const res = await fetch(`/api/diagnostic?studentId=${studentId}`)
+      const res = await fetch(`/api/diagnostic?studentId=${studentId}&subjectId=${subjectId}`)
       const data = await res.json()
       if (data.error) {
         setError(data.error)
         return
       }
       setStudent(data.student)
+      setSubjectName(data.subject?.name ?? '')
       setQuestions(data.questions)
     } catch {
       setError('Failed to load diagnostic questions')
@@ -69,7 +72,6 @@ function DiagnosticContent() {
     const unanswered = questions.filter(q => answers[q.id] === undefined)
     if (unanswered.length > 0) {
       setError(`Please answer all questions. ${unanswered.length} question(s) remaining.`)
-      // Jump to first unanswered
       const firstUnansweredIdx = questions.findIndex(q => answers[q.id] === undefined)
       setCurrentQuestion(firstUnansweredIdx)
       return
@@ -81,6 +83,7 @@ function DiagnosticContent() {
     try {
       const payload = {
         studentId,
+        subjectId,
         answers: questions.map(q => ({
           questionId: q.id,
           selectedIndex: answers[q.id],
@@ -96,7 +99,7 @@ function DiagnosticContent() {
 
       if (!data.success) throw new Error(data.error ?? 'Submit failed')
 
-      router.push(`/analysis?studentId=${studentId}`)
+      router.push(`/analysis?studentId=${studentId}&subjectId=${subjectId}`)
     } catch (err: any) {
       setError(err.message)
       setSubmitting(false)
@@ -142,7 +145,9 @@ function DiagnosticContent() {
       <div className="page-header">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
-            <div className="text-sm text-[#5a6478] mb-0.5">Diagnostic Assessment</div>
+            <div className="text-sm text-[#5a6478] mb-0.5">
+              {subjectName ? `${subjectName} — ` : ''}Diagnostic Assessment
+            </div>
             <div className="font-semibold text-[#e8eaf0]">{student?.name}</div>
           </div>
           <div className="text-right">

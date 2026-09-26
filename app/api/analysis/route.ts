@@ -3,13 +3,14 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/analysis?studentId=xxx
-// Returns: student, all concept performances with prerequisite info, strengths/weaknesses/gaps
+// GET /api/analysis?studentId=xxx&subjectId=xxx
+// Returns: student, concept performances (scoped to subject), prerequisite info, summary
 // Mastery thresholds (deterministic, no AI): STRONG>=70, DEVELOPING 40-69, GAP<40
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const studentId = searchParams.get('studentId')
+    const subjectId = searchParams.get('subjectId')
 
     if (!studentId) {
       return NextResponse.json({ error: 'studentId required' }, { status: 400 })
@@ -20,20 +21,29 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
 
+    // If subjectId provided, scope to that subject's concepts only
     const performances = await prisma.studentConceptPerformance.findMany({
-      where: { studentId },
-      include: { concept: { include: { topic: true } } },
+      where: {
+        studentId,
+        ...(subjectId
+          ? { concept: { topic: { subjectId } } }
+          : {}),
+      },
+      include: { concept: { include: { topic: { include: { subject: true } } } } },
       orderBy: { masteryPercent: 'asc' },
     })
 
     if (performances.length === 0) {
+      const redirectQuery = subjectId
+        ? `/diagnostic?studentId=${studentId}&subjectId=${subjectId}`
+        : `/diagnostic?studentId=${studentId}`
       return NextResponse.json({
         error: 'No assessment data found. Please complete the diagnostic first.',
-        redirectTo: `/diagnostic?studentId=${studentId}`,
+        redirectTo: redirectQuery,
       }, { status: 404 })
     }
 
-    // Compute overall mastery (mean of all concept masteries)
+    // Compute overall mastery (mean of all concept masteries in this subject)
     const overallMastery = performances.reduce((s, p) => s + p.masteryPercent, 0) / performances.length
 
     // Categorize by stored status (written by mastery formula, never by AI)
@@ -41,7 +51,8 @@ export async function GET(request: Request) {
     const developing = performances.filter(p => p.status === 'DEVELOPING')
     const gaps = performances.filter(p => p.status === 'GAP')
 
-    // Get most recent diagnostic attempt score
+    // Get most recent diagnostic attempt score for this student
+    // (scoped to subject via answered questions' concepts if subjectId given)
     const latestAttempt = await prisma.assessmentAttempt.findFirst({
       where: { studentId, type: 'DIAGNOSTIC' },
       orderBy: { startedAt: 'desc' },
@@ -49,8 +60,14 @@ export async function GET(request: Request) {
     })
 
     // --- Prerequisite logic: read from DB, never hardcoded ---
-    // Load all prerequisite edges, including prerequisite concept name
+    const conceptIds = performances.map(p => p.conceptId)
     const prereqEdges = await prisma.conceptPrerequisite.findMany({
+      where: {
+        OR: [
+          { conceptId: { in: conceptIds } },
+          { prerequisiteId: { in: conceptIds } },
+        ],
+      },
       include: {
         prerequisite: { select: { id: true, name: true } },
       },
@@ -60,7 +77,6 @@ export async function GET(request: Request) {
     const perfMap = new Map(performances.map(p => [p.conceptId, p]))
 
     // For each concept: compute prerequisiteBlocked from actual DB data
-    // A concept is blocked if ANY of its prerequisites does not have STRONG mastery
     const prereqInfoMap = new Map(
       performances.map(perf => {
         const prereqsForThisConcept = prereqEdges.filter(e => e.conceptId === perf.conceptId)
@@ -77,8 +93,14 @@ export async function GET(request: Request) {
       })
     )
 
+    // Determine subject info for response
+    const subjectInfo = performances[0]?.concept?.topic?.subject
+      ? { id: performances[0].concept.topic.subject.id, name: performances[0].concept.topic.subject.name }
+      : null
+
     return NextResponse.json({
       student: { id: student.id, name: student.name },
+      subject: subjectInfo,
       overallMastery,
       lastDiagnosticScore: latestAttempt?.overallScore ?? null,
       performances: performances.map(p => {

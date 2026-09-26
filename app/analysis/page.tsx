@@ -17,6 +17,7 @@ interface ConceptPerformance {
 
 interface AnalysisData {
   student: { id: string; name: string }
+  subject: { id: string; name: string } | null
   overallMastery: number
   lastDiagnosticScore: number | null
   performances: ConceptPerformance[]
@@ -56,6 +57,7 @@ function AnalysisContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const studentId = searchParams.get('studentId')
+  const subjectId = searchParams.get('subjectId')
 
   const [data, setData] = useState<AnalysisData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,13 +66,16 @@ function AnalysisContent() {
   useEffect(() => {
     if (!studentId) { router.push('/'); return }
     fetchAnalysis()
-  }, [studentId])
+  }, [studentId, subjectId])
 
   async function fetchAnalysis() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/analysis?studentId=${studentId}`)
+      const url = subjectId
+        ? `/api/analysis?studentId=${studentId}&subjectId=${subjectId}`
+        : `/api/analysis?studentId=${studentId}`
+      const res = await fetch(url)
       const json = await res.json()
       if (json.error) {
         if (json.redirectTo) {
@@ -123,19 +128,21 @@ function AnalysisContent() {
       <div className="page-header">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
-            <div className="text-xs text-[#5a6478] mb-0.5 uppercase tracking-wider">Knowledge Analysis</div>
+            <div className="text-xs text-[#5a6478] mb-0.5 uppercase tracking-wider">
+              {data.subject ? `${data.subject.name} — ` : ''}Knowledge Analysis
+            </div>
             <h1 className="font-bold text-[#e8eaf0]">{data.student.name}</h1>
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => router.push(`/diagnostic?studentId=${studentId}`)}
+              onClick={() => router.push(`/diagnostic?studentId=${studentId}${subjectId ? `&subjectId=${subjectId}` : ''}`)}
               className="btn-ghost text-sm"
             >
               Retake Diagnostic
             </button>
             <button
               id="go-to-path-btn"
-              onClick={() => router.push(`/path?studentId=${studentId}`)}
+              onClick={() => router.push(`/path?studentId=${studentId}${subjectId ? `&subjectId=${subjectId}` : ''}`)}
               className="btn-primary text-sm"
             >
               View Learning Path →
@@ -302,7 +309,7 @@ function AnalysisContent() {
         <div className="mt-8 text-center">
           <button
             id="view-learning-path-btn"
-            onClick={() => router.push(`/path?studentId=${studentId}`)}
+            onClick={() => router.push(`/path?studentId=${studentId}${subjectId ? `&subjectId=${subjectId}` : ''}`)}
             className="btn-primary"
           >
             View Personalized Learning Path →

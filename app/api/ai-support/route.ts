@@ -22,10 +22,13 @@ export async function POST(request: Request) {
       prisma.studentConceptPerformance.findUnique({
         where: { studentId_conceptId: { studentId, conceptId } },
       }),
-      prisma.concept.findUnique({ where: { id: conceptId } }),
+      prisma.concept.findUnique({
+        where: { id: conceptId },
+        include: { topic: { include: { subject: true } } },
+      }),
       prisma.studentConceptPerformance.findMany({
         where: { studentId },
-        include: { concept: true },
+        include: { concept: { include: { topic: { include: { subject: true } } } } },
       }),
     ])
 
@@ -33,9 +36,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Concept not found' }, { status: 404 })
     }
 
-    // Identify weak areas (other concepts that are Developing or Gap)
+    // Determine subject for context
+    const subjectName = concept.topic?.subject?.name ?? 'the subject'
+
+    // Identify weak areas (other concepts in same subject that are Developing or Gap)
+    const subjectId = concept.topic?.subject?.id
     const weakAreas = allPerformances
-      .filter(p => p.conceptId !== conceptId && (p.status === 'DEVELOPING' || p.status === 'GAP'))
+      .filter(p =>
+        p.conceptId !== conceptId &&
+        (p.status === 'DEVELOPING' || p.status === 'GAP') &&
+        (subjectId ? p.concept?.topic?.subject?.id === subjectId : true)
+      )
       .map(p => p.concept.name)
 
     // Determine current difficulty for this student
@@ -47,6 +58,7 @@ export async function POST(request: Request) {
 
     const ctx: AIContext = {
       concept: concept.name,
+      subject: subjectName,
       masteryPercent,
       weakAreas,
       recentScorePercent: performance?.lastScorePercent ?? 0,
@@ -63,6 +75,7 @@ export async function POST(request: Request) {
       error: result.error,
       context: {
         conceptName: concept.name,
+        subjectName,
         masteryPercent,
         currentDifficulty,
         weakAreas,

@@ -101,6 +101,7 @@ function LearnContent() {
   const searchParams = useSearchParams()
   const studentId = searchParams.get('studentId')
   const conceptId = searchParams.get('conceptId')
+  const subjectId = searchParams.get('subjectId')
 
   const [activeTab, setActiveTab] = useState<'explanation' | 'example' | 'practice_question'>('explanation')
   const [contents, setContents] = useState<Record<string, AIContent | null>>({})
@@ -162,12 +163,12 @@ function LearnContent() {
             <h1 className="font-bold text-[#e8eaf0]">{ctx?.conceptName ?? 'Loading...'}</h1>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => router.push(`/path?studentId=${studentId}`)} className="btn-ghost text-sm">
+            <button onClick={() => router.push(`/path?studentId=${studentId}${subjectId ? `&subjectId=${subjectId}` : ''}`)} className="btn-ghost text-sm">
               ← Path
             </button>
             <button
               id="go-to-quiz-btn"
-              onClick={() => router.push(`/quiz?studentId=${studentId}&conceptId=${conceptId}`)}
+              onClick={() => router.push(`/quiz?studentId=${studentId}&conceptId=${conceptId}${subjectId ? `&subjectId=${subjectId}` : ''}`)}
               className="btn-primary text-sm"
             >
               Take Quiz →

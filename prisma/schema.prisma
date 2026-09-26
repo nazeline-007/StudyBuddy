@@ -39,9 +39,10 @@ model Student {
 }
 
 model Subject {
-  id     String  @id @default(cuid())
-  name   String  @unique
-  topics Topic[]
+  id            String         @id @default(cuid())
+  name          String         @unique
+  topics        Topic[]
+  learningPaths LearningPath[]
 }
 
 model Topic {
@@ -158,12 +159,15 @@ model LearningPath {
   id          String           @id @default(cuid())
   studentId   String
   student     Student          @relation(fields: [studentId], references: [id])
+  subjectId   String?          // null = legacy (Data Structures); set for all new paths
+  subject     Subject?         @relation(fields: [subjectId], references: [id])
   generatedAt DateTime         @default(now())
   isCurrent   Boolean          @default(true)
 
   items LearningPathItem[]
 
   @@index([studentId, isCurrent])
+  @@index([studentId, subjectId, isCurrent])
 }
 
 model LearningPathItem {

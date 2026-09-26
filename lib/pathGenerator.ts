@@ -5,6 +5,9 @@ import { MasteryStatus } from '@prisma/client'
 // ============================================================
 // Prerequisite Engine + Path Generator
 // Per TECHNICAL_ARCHITECTURE.md §3, §4
+// Now subject-scoped: all path generation is scoped to a specific
+// subject so that a student's mastery for Math does not affect
+// their Data Structures learning path and vice versa.
 // ============================================================
 
 interface ConceptWithPerformance {
@@ -17,7 +20,8 @@ interface ConceptWithPerformance {
 }
 
 /**
- * Generate an ordered learning path for a student.
+ * Generate an ordered learning path for a student, scoped to a subject.
+ * If subjectId is provided, only concepts belonging to that subject are included.
  * Reads current StudentConceptPerformance + ConceptPrerequisite edges from DB.
  * Returns ordered list of concepts with reasons.
  *
@@ -28,7 +32,10 @@ interface ConceptWithPerformance {
  *   (d) Developing concepts with blocks
  *   (e) Strong concepts last (review)
  */
-export async function generateLearningPath(studentId: string): Promise<{
+export async function generateLearningPath(
+  studentId: string,
+  subjectId?: string
+): Promise<{
   pathId: string
   items: Array<{
     conceptId: string
@@ -40,20 +47,37 @@ export async function generateLearningPath(studentId: string): Promise<{
     prerequisiteBlocked: boolean
   }>
 }> {
-  // 1. Mark old paths as not current
+  // 1. Mark old paths for this student (and subject if provided) as not current
   await prisma.learningPath.updateMany({
-    where: { studentId, isCurrent: true },
+    where: {
+      studentId,
+      isCurrent: true,
+      ...(subjectId ? { subjectId } : {}),
+    },
     data: { isCurrent: false },
   })
 
-  // 2. Read performances
+  // 2. Read performances, optionally scoped to subject's concepts
   const performances = await prisma.studentConceptPerformance.findMany({
-    where: { studentId },
+    where: {
+      studentId,
+      ...(subjectId
+        ? { concept: { topic: { subjectId } } }
+        : {}),
+    },
     include: { concept: true },
   })
 
-  // 3. Read all prerequisite edges
-  const prereqEdges = await prisma.conceptPrerequisite.findMany()
+  // 3. Read prerequisite edges relevant to these concepts
+  const conceptIds = performances.map(p => p.conceptId)
+  const prereqEdges = await prisma.conceptPrerequisite.findMany({
+    where: {
+      OR: [
+        { conceptId: { in: conceptIds } },
+        { prerequisiteId: { in: conceptIds } },
+      ],
+    },
+  })
 
   // 4. Build concept map
   const perfMap = new Map(performances.map(p => [p.conceptId, p]))
@@ -124,10 +148,11 @@ export async function generateLearningPath(studentId: string): Promise<{
     }
   })
 
-  // 8. Persist the new path
+  // 8. Persist the new path (with subjectId if provided)
   const path = await prisma.learningPath.create({
     data: {
       studentId,
+      subjectId: subjectId ?? null,
       isCurrent: true,
       items: {
         create: itemsWithReasons.map(item => ({
@@ -143,11 +168,15 @@ export async function generateLearningPath(studentId: string): Promise<{
 }
 
 /**
- * Get the current learning path for a student (does not regenerate).
+ * Get the current learning path for a student, optionally scoped to a subject.
  */
-export async function getCurrentLearningPath(studentId: string) {
+export async function getCurrentLearningPath(studentId: string, subjectId?: string) {
   return prisma.learningPath.findFirst({
-    where: { studentId, isCurrent: true },
+    where: {
+      studentId,
+      isCurrent: true,
+      ...(subjectId ? { subjectId } : {}),
+    },
     include: {
       items: {
         orderBy: { orderIndex: 'asc' },

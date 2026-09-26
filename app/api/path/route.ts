@@ -4,12 +4,13 @@ import { generateLearningPath } from '@/lib/pathGenerator'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/path?studentId=xxx
-// Returns current learning path (or generates one if missing)
+// GET /api/path?studentId=xxx&subjectId=xxx
+// Returns current learning path (scoped to subject), or generates one if missing
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const studentId = searchParams.get('studentId')
+    const subjectId = searchParams.get('subjectId') ?? undefined
     const regenerate = searchParams.get('regenerate') === 'true'
 
     if (!studentId) {
@@ -21,28 +22,40 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
 
-    // Check if performance data exists
-    const hasPerformance = await prisma.studentConceptPerformance.count({ where: { studentId } })
+    // Check if performance data exists (scoped to subject if given)
+    const hasPerformance = await prisma.studentConceptPerformance.count({
+      where: {
+        studentId,
+        ...(subjectId ? { concept: { topic: { subjectId } } } : {}),
+      },
+    })
     if (!hasPerformance) {
+      const redirectQuery = subjectId
+        ? `/diagnostic?studentId=${studentId}&subjectId=${subjectId}`
+        : `/diagnostic?studentId=${studentId}`
       return NextResponse.json({
         error: 'No assessment data. Complete the diagnostic first.',
-        redirectTo: `/diagnostic?studentId=${studentId}`,
+        redirectTo: redirectQuery,
       }, { status: 404 })
     }
 
     if (regenerate) {
-      // Regenerate the learning path
-      const path = await generateLearningPath(studentId)
+      const path = await generateLearningPath(studentId, subjectId)
       return NextResponse.json({
         student: { id: student.id, name: student.name },
         pathId: path.pathId,
         items: path.items,
+        subjectId: subjectId ?? null,
       })
     }
 
-    // Get current path
+    // Get current path (scoped to subject if given)
     const currentPath = await prisma.learningPath.findFirst({
-      where: { studentId, isCurrent: true },
+      where: {
+        studentId,
+        isCurrent: true,
+        ...(subjectId ? { subjectId } : {}),
+      },
       include: {
         items: {
           orderBy: { orderIndex: 'asc' },
@@ -58,17 +71,21 @@ export async function GET(request: Request) {
 
     if (!currentPath) {
       // Generate if missing
-      const path = await generateLearningPath(studentId)
+      const path = await generateLearningPath(studentId, subjectId)
       return NextResponse.json({
         student: { id: student.id, name: student.name },
         pathId: path.pathId,
         items: path.items,
+        subjectId: subjectId ?? null,
       })
     }
 
     // Also fetch performances for additional context
     const performances = await prisma.studentConceptPerformance.findMany({
-      where: { studentId },
+      where: {
+        studentId,
+        ...(subjectId ? { concept: { topic: { subjectId } } } : {}),
+      },
     })
     const perfMap = new Map(performances.map(p => [p.conceptId, p]))
 
@@ -76,6 +93,7 @@ export async function GET(request: Request) {
       student: { id: student.id, name: student.name },
       pathId: currentPath.id,
       generatedAt: currentPath.generatedAt,
+      subjectId: currentPath.subjectId ?? null,
       items: currentPath.items.map(item => ({
         id: item.id,
         conceptId: item.conceptId,
