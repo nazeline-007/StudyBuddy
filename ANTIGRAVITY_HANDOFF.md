@@ -83,7 +83,7 @@ Identical to `PROJECT_SPEC.md` §11 — all 10 points must be independently veri
 **Update this section at the end of every session. This is the single source of truth for what has actually been done — not chat memory.**
 
 ```
-Current Phase:        Phase 3 COMPLETE — Diagnostic Assessment verified end-to-end
+Current Phase:        Phase 4 COMPLETE — Knowledge Analysis verified end-to-end
 
 Completed:
   Phase 1 — Project Setup: COMPLETE ✓
@@ -150,8 +150,57 @@ Completed:
       - Empty answers → 400
       - UI: unanswered question blocks submit, jumps to first unanswered ✓
 
+  Phase 4 — Knowledge Analysis: COMPLETE ✓ (verified 2026-09-26)
+
+    Code:
+      - app/api/analysis/route.ts — GET /api/analysis?studentId=xxx
+          Returns: student, all 7 concept performances with actual mastery from DB,
+          prerequisite edges read from ConceptPrerequisite table (never hardcoded),
+          prerequisiteBlocked + blockedByNames per concept, summary counts,
+          lastDiagnosticScore, overallMastery (mean of all concepts)
+      - app/analysis/page.tsx — Full Knowledge Analysis UI:
+          Circular mastery gauge, concept breakdown cards, mastery bars,
+          STRONG/DEVELOPING/GAP badges, 🔒 prerequisite-blocked badge with
+          tooltip listing blocked-by concept names, summary panels
+
+    Tests RUN and PASSED (node prisma/verify_phase4.mjs) — 38/38 checks:
+      1. GET /api/analysis (no studentId) → 400 ✓
+      2. GET /api/analysis?studentId=nonexistent → 404 "Student not found" ✓
+      3. Alex (student-strong):
+           → 7 concepts returned ✓
+           → Arrays: 88.2% STRONG ✓
+           → Tree Traversal: 68.8% DEVELOPING ✓
+           → prerequisiteBlocked field present on all concepts ✓
+           → blockedByNames array present on all concepts ✓
+           → 0 prerequisite-blocked concepts (Alex's prereqs are all STRONG) ✓
+           → Summary: 6 STRONG, 1 DEVELOPING, 0 GAP ✓
+      4. Jordan (student-weak):
+           → 7 concepts returned, all GAP ✓
+           → Arrays: 19.5% GAP, not blocked (no prerequisites) ✓
+           → Trees: 9.7% GAP, not blocked (no prerequisites) ✓
+           → Linked Lists: blocked by Arrays ✓ (blockedByNames=["Arrays"])
+           → Stacks: blocked by Linked Lists ✓
+           → Queues: blocked by Linked Lists ✓
+           → Binary Trees: blocked by Trees ✓
+           → Tree Traversal: blocked by Binary Trees ✓
+           → Summary: 0 STRONG, 0 DEVELOPING, 7 GAP ✓
+      5. Outputs differ: Alex overallMastery ≠ Jordan overallMastery ✓
+           Alex: 5 more STRONG, Jordan: 7 more GAP ✓
+           Jordan blocked count (5) > Alex blocked count (0) ✓
+
+    Browser E2E (verified 2026-09-26):
+      - Home page loads, Alex (Strong Demo) + Jordan (Weak Demo) selectable ✓
+      - /analysis?studentId=student-strong:
+           Alex name, 78% overall STRONG, all 7 concepts, mastery bars,
+           status badges, 0 prerequisite-blocked badges ✓
+      - /analysis?studentId=student-weak:
+           Jordan name, 13% overall GAP, all 7 concepts all GAP,
+           🔒 Prerequisite needed badges on 5 concepts (with prereq name in parens),
+           Arrays + Trees NOT blocked ✓
+
+    Phase 3 regression: node prisma/verify_phase3.mjs → PASS ✓
+
 Remaining Phases:
-  Phase 4: Knowledge Analysis (view per-concept mastery after diagnostic)
   Phase 5: Personalized Learning Path (view/navigate generated path)
   Phase 6: Learning Support (AI explanation — static fallback since API key is placeholder)
   Phase 7: Adaptive Quiz (quiz with difficulty adaptation)
@@ -167,21 +216,16 @@ Current Errors: NONE ✓
 Last Verification: 2026-09-26
   - npx tsc --noEmit → exit 0 ✓
   - node prisma/verify_db.mjs → all counts correct ✓
-  - node prisma/verify_phase3.mjs → all DB rows correct ✓
-  - Browser E2E → full flow Start → Diagnostic → Submit → Analysis ✓
+  - node prisma/verify_phase3.mjs → PASS ✓
+  - node prisma/verify_phase4.mjs → 38/38 checks PASS ✓
+  - Browser E2E → /analysis Alex: 7 concepts, 0 blocked; Jordan: 7 GAP, 5 blocked ✓
 
-Files Changed This Phase 3 Session:
-  - prisma/verify_phase3.mjs (NEW — verification script)
-  - ANTIGRAVITY_HANDOFF.md (updated to reflect Phase 3 complete)
-  [No source code changes required — existing implementation was correct]
+Files Changed This Phase 4 Session:
+  - app/api/analysis/route.ts (MODIFIED — prerequisite blocking logic added)
+  - app/analysis/page.tsx (MODIFIED — prerequisite-blocked badge UI added)
+  - prisma/verify_phase4.mjs (NEW — Phase 4 verification script, 38 checks)
+  - ANTIGRAVITY_HANDOFF.md (updated to reflect Phase 4 complete)
 
-Next Action:
-  Begin Phase 4: Knowledge Analysis
-  - Verify /api/analysis?studentId=xxx returns per-concept mastery data
-  - Verify /analysis page renders charts/bars for all 7 concepts
-  - Test with both strong and weak students to confirm different outputs
-  - Prerequisites blocking must visually appear in analysis view
-
-STOP — Phase 3 is complete. Do not start Phase 4 without explicit instruction.
+STOP — Phase 4 is complete. Do not start Phase 5 without explicit instruction.
 ```
 

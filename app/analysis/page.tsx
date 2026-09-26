@@ -11,6 +11,8 @@ interface ConceptPerformance {
   status: 'STRONG' | 'DEVELOPING' | 'GAP'
   lastScorePercent: number | null
   attemptsCount: number
+  prerequisiteBlocked: boolean
+  blockedByNames: string[]
 }
 
 interface AnalysisData {
@@ -29,10 +31,10 @@ interface AnalysisData {
 }
 
 const STATUS_CONFIG = {
-  STRONG: { label: 'Strong', color: 'success', bgColor: 'bg-success-500', emoji: '✅' },
-  DEVELOPING: { label: 'Developing', color: 'warning', bgColor: 'bg-warning-500', emoji: '📈' },
-  GAP: { label: 'Knowledge Gap', color: 'danger', bgColor: 'bg-danger-500', emoji: '⚠️' },
-}
+  STRONG: { label: 'Strong', bgColor: 'bg-success-500', emoji: '✅' },
+  DEVELOPING: { label: 'Developing', bgColor: 'bg-warning-500', emoji: '📈' },
+  GAP: { label: 'Knowledge Gap', bgColor: 'bg-danger-500', emoji: '⚠️' },
+} as const
 
 function MasteryBar({ percent, status }: { percent: number; status: string }) {
   const colors: Record<string, string> = {
@@ -65,6 +67,8 @@ function AnalysisContent() {
   }, [studentId])
 
   async function fetchAnalysis() {
+    setLoading(true)
+    setError('')
     try {
       const res = await fetch(`/api/analysis?studentId=${studentId}`)
       const json = await res.json()
@@ -78,7 +82,7 @@ function AnalysisContent() {
       }
       setData(json)
     } catch {
-      setError('Failed to load analysis')
+      setError('Failed to load analysis. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -88,7 +92,7 @@ function AnalysisContent() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-pulse-soft text-5xl mb-4">🔍</div>
+          <div className="animate-spin text-5xl mb-4">🔍</div>
           <p className="text-[#8b95a8]">Analyzing your knowledge...</p>
         </div>
       </div>
@@ -107,7 +111,11 @@ function AnalysisContent() {
     )
   }
 
-  const overallStatus = data.overallMastery >= 70 ? 'STRONG' : data.overallMastery >= 40 ? 'DEVELOPING' : 'GAP'
+  const overallStatus =
+    data.overallMastery >= 70 ? 'STRONG' :
+    data.overallMastery >= 40 ? 'DEVELOPING' : 'GAP'
+
+  const blockedCount = data.performances.filter(p => p.prerequisiteBlocked).length
 
   return (
     <div className="page-container">
@@ -155,16 +163,19 @@ function AnalysisContent() {
                 <span className="text-xl font-bold text-[#e8eaf0]">{data.overallMastery.toFixed(0)}%</span>
               </div>
             </div>
-            <div>
+            <div className="flex-1">
               <div className="text-sm text-[#5a6478] mb-1">Overall Mastery</div>
               <div className="text-2xl font-bold text-[#e8eaf0] mb-2">
-                {STATUS_CONFIG[overallStatus as keyof typeof STATUS_CONFIG].emoji}{' '}
-                {STATUS_CONFIG[overallStatus as keyof typeof STATUS_CONFIG].label}
+                {STATUS_CONFIG[overallStatus].emoji}{' '}
+                {STATUS_CONFIG[overallStatus].label}
               </div>
-              <div className="flex gap-4 text-sm">
+              <div className="flex flex-wrap gap-4 text-sm">
                 <span className="text-success-400">✓ {data.summary.strongCount} Strong</span>
                 <span className="text-warning-400">~ {data.summary.developingCount} Developing</span>
                 <span className="text-danger-400">✗ {data.summary.gapCount} Gaps</span>
+                {blockedCount > 0 && (
+                  <span className="text-[#8b95a8]">🔒 {blockedCount} Prerequisite-blocked</span>
+                )}
               </div>
               {data.lastDiagnosticScore !== null && (
                 <div className="text-xs text-[#5a6478] mt-1">
@@ -233,24 +244,44 @@ function AnalysisContent() {
         {/* Per-concept breakdown */}
         <div className="mb-6">
           <h2 className="section-title">Concept Breakdown</h2>
-          <p className="section-subtitle mb-4">Mastery computed using: newMastery = previousMastery × 0.7 + score × 0.3</p>
+          <p className="section-subtitle mb-4">
+            Mastery = previousMastery × 0.7 + score × 0.3 · Strong ≥70% · Developing 40–69% · Gap &lt;40%
+          </p>
         </div>
 
         <div className="space-y-3">
           {data.performances.map(perf => {
             const cfg = STATUS_CONFIG[perf.status]
             return (
-              <div key={perf.conceptId} className="card">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
+              <div
+                key={perf.conceptId}
+                id={`concept-card-${perf.conceptId}`}
+                className={`card ${perf.prerequisiteBlocked ? 'border-[#3a4a63] opacity-80' : ''}`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-sm font-semibold text-[#e8eaf0]">{perf.conceptName}</span>
                     <span className="text-xs text-[#5a6478]">{perf.topicName}</span>
+                    {/* Prerequisite-blocked badge — from DB data, not hardcoded */}
+                    {perf.prerequisiteBlocked && (
+                      <span
+                        id={`prereq-blocked-${perf.conceptId}`}
+                        title={`Blocked by: ${perf.blockedByNames.join(', ')}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2a3347] border border-[#3a4a63] text-[#8b95a8] text-xs"
+                      >
+                        🔒 Prerequisite needed
+                        <span className="text-[#5a6478]">({perf.blockedByNames.join(', ')})</span>
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-sm font-bold text-[#e8eaf0]">
                       {perf.masteryPercent.toFixed(1)}%
                     </span>
-                    <span className={`badge-${perf.status.toLowerCase() === 'strong' ? 'strong' : perf.status.toLowerCase() === 'developing' ? 'developing' : 'gap'}`}>
+                    <span className={`badge-${
+                      perf.status === 'STRONG' ? 'strong' :
+                      perf.status === 'DEVELOPING' ? 'developing' : 'gap'
+                    }`}>
                       {cfg.emoji} {cfg.label}
                     </span>
                   </div>
