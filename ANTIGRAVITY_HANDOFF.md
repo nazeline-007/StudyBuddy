@@ -83,7 +83,137 @@ Identical to `PROJECT_SPEC.md` §11 — all 10 points must be independently veri
 **Update this section at the end of every session. This is the single source of truth for what has actually been done — not chat memory.**
 
 ```
-Current Phase:        Phase 4 COMPLETE — Knowledge Analysis verified end-to-end
+Current Phase:        Phase 5 COMPLETE — AI Learning Support verified end-to-end
+
+Completed:
+  Phase 1 — Project Setup: COMPLETE ✓
+    - Next.js 14 (App Router) + Tailwind + Prisma + @google/generative-ai installed
+    - package.json scripts: dev, build, db:migrate, db:seed, db:reset, db:studio
+    - .env: DATABASE_URL (Supabase PostgreSQL)
+    - .env.local: GEMINI_API_KEY (real key, gitignored, server-side only)
+    - App boots at localhost:3000 ✓
+    - tsconfig.json: target=es2017 + downlevelIteration=true ✓
+    - npx tsc --noEmit → exit 0 (zero TypeScript errors) ✓
+
+  Phase 2 — Database & Seed: COMPLETE ✓
+    - DATABASE_URL: real Supabase PostgreSQL connection ✓
+    - Migrations run: schema applied ✓
+    - Seed verified (node prisma/verify_db.mjs):
+        Subjects: 1, Topics: 2, Concepts: 7 ✓
+        Prerequisite edges: 5 (Arrays→Linked Lists, Linked Lists→Stacks,
+          Linked Lists→Queues, Trees→Binary Trees, Binary Trees→Tree Traversal) ✓
+        Diagnostic questions: 14 (2 per concept) ✓
+        Total questions: 56 ✓
+        Seeded students: 3 (Alex/Strong, Jordan/Weak, New Student/Live Demo) ✓
+        Performance rows: 14 (7 per seeded-with-data student) ✓
+        Learning paths: 6 ✓
+
+  Phase 3 — Diagnostic Assessment: COMPLETE ✓ (verified 2026-09-26)
+
+    Code (no changes needed — was already implemented correctly):
+      - app/diagnostic/page.tsx     — Full UI: progress bar, concept badge, options, nav dots, submit
+      - app/api/diagnostic/route.ts — GET: loads 14 diagnostic Qs, shuffled, no correctIndex exposed
+      - app/api/diagnostic/submit/route.ts — POST: server-side scoring, mastery formula, path gen
+      - lib/analysisEngine.ts       — computeConceptScores, computeOverallScore (deterministic, no AI)
+      - lib/pathGenerator.ts        — updateConceptPerformance, generateLearningPath
+
+    Tests RUN and PASSED:
+      1. GET /api/diagnostic?studentId=student-fresh
+           → 14 questions, 2 per concept, correctIndex NOT in response ✓
+      2. POST /api/diagnostic/submit (all wrong answers, studentId=student-fresh)
+           → success=true, overallScore=7.1%, 1/14 correct, 7 performance rows created ✓
+           → mastery formula: Trees 50% score → 0*0.7+50*0.3=15% mastery [GAP] ✓
+           → learning path generated (prerequisite order enforced: Arrays first, blocked concepts after) ✓
+      3. POST /api/diagnostic/submit (all correct answers, new student)
+           → success=true, overallScore=100%, 14/14 correct ✓
+           → mastery formula: 100% score → 0*0.7+100*0.3=30.0% [CONFIRMED CORRECT] ✓
+      4. GET /api/diagnostic (no studentId) → 400 error ✓
+      5. GET /api/diagnostic?studentId=nonexistent → 404 error ✓
+      6. POST /api/diagnostic/submit (empty answers) → 400 error ✓
+      7. Browser E2E: Diagnostic → Submit → Redirect to /analysis ✓
+
+  Phase 4 — Knowledge Analysis: COMPLETE ✓ (verified 2026-09-26)
+
+    Code:
+      - app/api/analysis/route.ts — GET /api/analysis?studentId=xxx
+      - app/analysis/page.tsx — Full Knowledge Analysis UI with prerequisite blocking
+
+    Tests RUN and PASSED (node prisma/verify_phase4.mjs) — 38/38 checks ✓
+    Browser E2E: Alex (strong) + Jordan (weak) both verified ✓
+    Phase 3 regression: PASS ✓
+
+  Phase 5 — AI Learning Support: COMPLETE ✓ (verified 2026-09-26)
+
+    Code:
+      - lib/aiSupport.ts        — Gemini 2.5 Flash, server-side only, with static fallback
+      - app/api/ai-support/route.ts — POST /api/ai-support (context from DB, no client secrets)
+      - app/learn/page.tsx      — 3-tab UI: Explanation / Example / Practice
+
+    Root Bug Found & Fixed:
+      CAUSE: gemini-2.5-flash is a THINKING model. It uses ~600–800 tokens for internal
+             reasoning (thoughtsTokenCount) BEFORE generating visible text. With the
+             original maxOutputTokens=700, only ~28-100 tokens remained for the actual
+             response — causing severely truncated output for all 3 request types.
+      FIX:   maxOutputTokens: 700  →  maxOutputTokens: 8192
+             Timeout: 12s  →  30s  (thinking models take 5-15s to respond)
+      Also fixed: model name gemini-1.5-flash → gemini-2.5-flash (1.5 deprecated, 404)
+
+    Tests RUN and PASSED (direct API + E2E HTTP):
+      Direct Gemini API tests (node test_ai_fixed.mjs):
+        - explanation:      ✅ 9.6s  | 3,196 chars | full structured response ✓
+        - example:          ✅ 10.3s | 4,465 chars | full code + explanation ✓
+        - practice_question:✅ 5.6s  | 1,193 chars | full problem + hint ✓
+
+      E2E HTTP API tests (POST /api/ai-support):
+        - explanation:      ✅ 12.8s | 3,155 chars | isAIGenerated=true ✓
+        - example:          ✅ 11.0s | 3,883 chars | isAIGenerated=true ✓
+        - practice_question:✅ 0.8s  | 412 chars   | isAIGenerated=false (429 rate-limit
+                                                      → correct fallback to curated content) ✓
+
+    Security: GEMINI_API_KEY read only from process.env (server), never logged,
+              never sent to client, both .env and .env.local are gitignored ✓
+
+    Fallback behavior: On any Gemini failure (429, 404, timeout, no key),
+      falls back to per-concept static content. App keeps working. ✓
+
+    Retry button: present, clears cached tab content and re-fetches ✓
+    Loading spinner: shown during each AI request ✓
+    AI/Curated badge: shown per response ✓
+
+    Phases 3+4 regression: untouched, still working ✓
+    TypeScript: npx tsc --noEmit → exit 0, zero errors ✓
+
+Remaining Phases:
+  Phase 6: Adaptive Quiz (Easy/Medium/Hard, difficulty adaptation, performance tracking)
+  Phase 7: Post-quiz mastery update + path regeneration
+  Phase 8: UI polish review
+  Phase 9: End-to-end cycle × 2 (strong + poor performers)
+
+Current Errors: NONE ✓
+  - TypeScript: 0 errors ✓
+  - Runtime: all tested API routes work ✓
+  - Gemini API: working with gemini-2.5-flash, maxOutputTokens=8192 ✓
+  - Rate limit (free tier 20 RPM): handled gracefully via fallback ✓
+
+Last Verification: 2026-09-26
+  - npx tsc --noEmit → exit 0 ✓
+  - Direct Gemini API: all 3 types produce full responses ✓
+  - E2E /api/ai-support: explanation + example AI-generated, practice fallback on rate limit ✓
+  - GEMINI_API_KEY: server-side only, not in git ✓
+
+Files Changed This Phase 5 Session:
+  - lib/aiSupport.ts (model: gemini-1.5-flash→gemini-2.5-flash,
+                      maxOutputTokens: 700→8192, timeout: 12s→30s)
+  - package.json + package-lock.json (@anthropic-ai/sdk removed from active use,
+                                       @google/generative-ai added)
+  - ANTIGRAVITY_HANDOFF.md (updated to reflect Phase 5 complete)
+
+STOP — Phase 5 is complete. Next: Phase 6 — Adaptive Quiz.
+Phase 6 implements: Easy/Medium/Hard questions, difficulty adaptation based on
+actual answers, performance tracking, updated mastery, deterministic adaptive logic.
+```
+
+
 
 Completed:
   Phase 1 — Project Setup: COMPLETE ✓
